@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Malla Interactiva TUDAI 2024</title>
+<style>
+  :root {
+    --color-aprobada: #EBC9FF;
+    --color-habilitada: #C77DFF;
+    --color-bloqueada: #3C096C;
+    --color-texto: #fff;
+    --color-texto-aprobada: #4B007D;
+    --transition-time: 0.3s;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #121212;
+    margin: 0;
+    padding: 20px;
+    color: var(--color-texto);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+  h1 {
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  #malla {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+    width: 100%;
+    max-width: 960px;
+  }
+  .materia {
+    padding: 15px 20px 10px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 600;
+    font-size: 1.05rem;
+    box-shadow: 0 0 8px rgba(0,0,0,0.3);
+    transition:
+      background-color var(--transition-time),
+      color var(--transition-time),
+      text-decoration var(--transition-time);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 110px;
+    text-align: center;
+  }
+  .materia .titulo {
+    margin-bottom: 8px;
+  }
+  .bloqueada {
+    background-color: var(--color-bloqueada);
+    color: var(--color-texto);
+    cursor: default;
+  }
+  .habilitada {
+    background-color: var(--color-habilitada);
+    color: var(--color-texto);
+  }
+  .aprobada {
+    background-color: var(--color-aprobada);
+    color: var(--color-texto-aprobada);
+    text-decoration: line-through;
+  }
+  #resetBtn {
+    margin-top: 20px;
+    background-color: var(--color-habilitada);
+    border: none;
+    padding: 12px 24px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    color: var(--color-texto);
+    cursor: pointer;
+    box-shadow: 0 0 12px var(--color-habilitada);
+    transition: background-color 0.25s ease;
+  }
+  #resetBtn:hover {
+    background-color: #B55FEF;
+  }
+  .notas {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+    width: 100%;
+    justify-content: center;
+  }
+  .nota-input {
+    width: 48%;
+  }
+  input[type="number"] {
+    width: 100%;
+    border-radius: 6px;
+    border: none;
+    padding: 4px 8px;
+    font-size: 0.9rem;
+    text-align: center;
+  }
+  input[type="number"]:disabled {
+    background-color: #ddd;
+    color: #999;
+    cursor: not-allowed;
+  }
+  @media (max-width: 600px) {
+    .materia {
+      font-size: 0.95rem;
+      padding: 12px 15px 8px 15px;
+      min-height: 130px;
+    }
+    #malla {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+  }
+</style>
+</head>
+<body>
+<h1>Malla Interactiva TUDAI - Plan 2024</h1>
+<div id="malla"></div>
+<button id="resetBtn" title="Reiniciar progreso">Reiniciar progreso</button>
+
+<script>
+  const materias = [
+    { codigo: "1.1", nombre: "Programación 1", correlativas: [] },
+    { codigo: "1.2", nombre: "Taller de Matemática Computacional", correlativas: [] },
+    { codigo: "1.3", nombre: "Inglés 1", correlativas: [] },
+    { codigo: "2.1", nombre: "Tecnología de la información en las organizaciones", correlativas: [] },
+    { codigo: "2.2", nombre: "Web 1", correlativas: ["1.1"] },
+    { codigo: "2.3", nombre: "Programación 2", correlativas: ["1.1"] },
+    { codigo: "2.4", nombre: "Inglés 2", correlativas: ["1.3"] },
+    { codigo: "2.5", nombre: "Seminario Tecnológico 1", correlativas: [] },
+    { codigo: "3.1", nombre: "Web 2", correlativas: ["2.2"] },
+    { codigo: "3.2", nombre: "Programación 3", correlativas: ["2.3"] },
+    { codigo: "3.3", nombre: "Introducción a las Metodologías de desarrollo de software", correlativas: ["2.1", "2.3"] },
+    { codigo: "3.4", nombre: "Bases de Datos", correlativas: ["1.1", "1.2"] },
+    { codigo: "3.5", nombre: "Seminario Tecnológico 2", correlativas: [] },
+    { codigo: "4.1", nombre: "Técnicas de documentación y validación", correlativas: ["3.3"] },
+    { codigo: "4.2", nombre: "Interfaces de usuario e Interacción", correlativas: ["1.2", "3.1", "2.3"] },
+    { codigo: "4.3", nombre: "Arquitecturas Web", correlativas: ["3.3", "3.1", "3.4"] },
+    { codigo: "4.4", nombre: "Configuración y desarrollo de aplicaciones en redes", correlativas: ["3.1"] },
+    { codigo: "4.5", nombre: "Seminario Tecnológico 3", correlativas: [] },
+    { codigo: "5.1", nombre: "Prácticas Profesionales (PPS)", correlativas: ["3.3"] }
+  ];
+
+  const STORAGE_KEY = "tudai2024_aprobadas";
+  const STORAGE_NOTAS = "tudai2024_notas";
+  const mallaDiv = document.getElementById("malla");
+  const resetBtn = document.getElementById("resetBtn");
+
+  let aprobadas = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  let notas = JSON.parse(localStorage.getItem(STORAGE_NOTAS)) || {};
+
+  function estaDesbloqueada(materia) {
+    if (aprobadas.includes(materia.codigo)) return true;
+    return materia.correlativas.every(c => aprobadas.includes(c));
+  }
+
+  function guardarEstado() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(aprobadas));
+  }
+
+  function guardarNotas() {
+    localStorage.setItem(STORAGE_NOTAS, JSON.stringify(notas));
+  }
+
+  function toggleAprobada(materiaCodigo) {
+    if (aprobadas.includes(materiaCodigo)) {
+      aprobadas = aprobadas.filter(c => c !== materiaCodigo);
+    } else {
+      aprobadas.push(materiaCodigo);
+    }
+    guardarEstado();
+    actualizarMalla();
+  }
+
+  function actualizarMalla() {
+    mallaDiv.innerHTML = "";
+    materias.forEach(materia => {
+      const div = document.createElement("div");
+      div.classList.add("materia");
+      div.setAttribute("data-codigo", materia.codigo);
+
+      // Estado de materia
+      const aprobada = aprobadas.includes(materia.codigo);
+      const desbloqueada = estaDesbloqueada(materia);
+
+      // Clase colores
+      if (aprobada) {
+        div.classList.add("aprobada");
+      } else if (desbloqueada) {
+        div.classList.add("habilitada");
+      } else {
+        div.classList.add("bloqueada");
+      }
+
+      // Título y click para marcar aprobada SOLO si habilitada
+      const titulo = document.createElement("div");
+      titulo.textContent = materia.nombre;
+      titulo.classList.add("titulo");
+      div.appendChild(titulo);
+
+      if (desbloqueada && !aprobada) {
+        div.style.cursor = "pointer";
+        div.onclick = () => {
+          toggleAprobada(materia.codigo);
+        };
+      } else {
+        div.style.cursor = "default";
+        div.onclick = null;
+      }
+
+      // Notas inputs
+      const contNotas = document.createElement("div");
+      contNotas.classList.add("notas");
+
+      const inputParcial = document.createElement("input");
+      inputParcial.type = "number";
+      inputParcial.min = 0;
+      inputParcial.max = 10;
+      inputParcial.step = 0.1;
+      inputParcial.placeholder = "Parcial";
+      inputParcial.classList.add("nota-input");
+      inputParcial.value = notas[materia.codigo]?.parcial ?? "";
+      inputParcial.disabled = !desbloqueada && !aprobada;
+
+      inputParcial.addEventListener("change", e => {
+        let val = parseFloat(e.target.value);
+        if (isNaN(val) || val < 0) val = 0;
+        if (val > 10) val = 10;
+        e.target.value = val;
+        if (!notas[materia.codigo]) notas[materia.codigo] = {};
+        notas[materia.codigo].parcial = val;
+        guardarNotas();
+      });
+
+      const inputFinal = document.createElement("input");
+      inputFinal.type = "number";
+      inputFinal.min = 0;
+      inputFinal.max = 10;
+      inputFinal.step = 0.1;
+      inputFinal.placeholder = "Final";
+      inputFinal.classList.add("nota-input");
+      inputFinal.value = notas[materia.codigo]?.final ?? "";
+      inputFinal.disabled = !desbloqueada && !aprobada;
+
+      inputFinal.addEventListener("change", e => {
+        let val = parseFloat(e.target.value);
+        if (isNaN(val) || val < 0) val = 0;
+        if (val > 10) val = 10;
+        e.target.value = val;
+        if (!notas[materia.codigo]) notas[materia.codigo] = {};
+        notas[materia.codigo].final = val;
+        guardarNotas();
+      });
+
+      contNotas.appendChild(inputParcial);
+      contNotas.appendChild(inputFinal);
+      div.appendChild(contNotas);
+
+      mallaDiv.appendChild(div);
+    });
+  }
+
+  resetBtn.addEventListener("click", () => {
+    if (confirm("¿Querés reiniciar todo tu progreso y notas?")) {
+      aprobadas = [];
+      notas = {};
+      guardarEstado();
+      guardarNotas();
+      actualizarMalla();
+    }
+  });
+
+  actualizarMalla();
+</script>
+</body>
+</html>
+
